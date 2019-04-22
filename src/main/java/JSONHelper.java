@@ -1,8 +1,15 @@
+/**
+ * @author Georges Cosson
+ */
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 
+/**
+ * utility class to work with JSONs
+ */
 public class JSONHelper {
 
     public JSONHelper() {}
@@ -23,7 +30,8 @@ public class JSONHelper {
         for(String spell : entitySpells) {
             spellsAsJSON.put(spell);
         }
-        //entitySpells.forEach(spell -> spellsAsJSON.put(spell));
+
+        /* add the spells */
         entity.put("spells", spellsAsJSON);
 
         return entity;

@@ -1,7 +1,6 @@
 /**
  * @author Georges Cosson
  */
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
@@ -33,9 +32,16 @@ public class EntityCrawler {
     public JSONArray crawl() {
         JSONArray crawlingResults = new JSONArray();
 
+        System.out.println(">> CRAWLING STARTED FOR " + this.urls.size() + " URLs");
+
+        // fetch all urls
         for(String url : this.urls) {
             JSONObject entity = this.crawlOne(url);
-            crawlingResults.put(entity);
+
+            // check for null result
+            if(entity != null) {
+                crawlingResults.put(entity);
+            }
         }
 
         return crawlingResults;
@@ -48,15 +54,21 @@ public class EntityCrawler {
      */
     private JSONObject crawlOne(String url) {
         try {
+            // get html from the page
             Document html = Jsoup.connect(url).get();
 
-            // lets retrieve the entity's informations
+            // let's retrieve the entity's informations
             String name = fetchName(html); // name
             ArrayList<String> spells = fetchSpells(html, name); // spells
 
+            // check for for empty names (happens on secondary bestiaries)
+            if(name.equals("")) {
+                return null;
+            }
+
+            // return formatted result
             return this.jsonHelper.entityAsJSON(name, spells);
         } catch (IOException e) {
-            e.printStackTrace();
             return null;
         }
     }
@@ -67,11 +79,14 @@ public class EntityCrawler {
      * @return entity name
      */
     private String fetchName(Document html) {
+        // html / css queries used
         String regularQuery = ".stat-block-title > b";
         String emptyQuery = ".stat-block-title";
 
         Elements entity = html.select(regularQuery);
-        if (entity.equals("")) {
+
+        // check for empty
+        if (entity.isEmpty()) {
             entity = html.select(emptyQuery);
         }
 
@@ -83,36 +98,38 @@ public class EntityCrawler {
     /**
      * extracts the spells from the html
      * @param html
-     * @param monsterName
+     * @param entityName
      * @return spells
      */
-    public ArrayList<String> fetchSpells(Document html, String monsterName) {
+    public ArrayList<String> fetchSpells(Document html, String entityName) {
         String query = ".stat-block-title, .stat-block-breaker:contains(Offense) ~ .stat-block-2 a";
-        Elements a = html.select(query);
+        Elements elems = html.select(query);
 
         ArrayList<String> spells = new ArrayList<>();
         boolean hasResult = false;
-        int uu = 0;
 
-        // clean array
-        for (Element elem : a) {
-            elem.select(".stat-block-cr").remove();
-        }
+        // lets get all the spells for the current entity
+        for (Element element : elems) {
 
-        // return spells for current monster
-            for (Element element : a) {
-                if (!element.classNames().isEmpty()) {
-                    if (hasResult) {
-                        return spells;
-                    }
-                    if (element.text().equals(monsterName)) {
-                        hasResult = true;
-                    }
+            // clean the array
+            element.select(".stat-block-cr").remove();
+
+            // check for empty classNames
+            if (!element.classNames().isEmpty()) {
+                if (hasResult) {
+                    return spells;
                 }
-                if (element.tag().toString().equals("a") && hasResult) {
-                    spells.add(element.text());
+                if (element.text().equals(entityName)) {
+                    hasResult = true;
                 }
             }
+
+            // if element is a link tag, and we got a result
+            if (element.tag().toString().equals("a") && hasResult) {
+                // then add the element to spells
+                spells.add(element.text());
+            }
+        }
 
         return spells;
     }
